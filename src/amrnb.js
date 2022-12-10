@@ -24413,26 +24413,28 @@ var AMR = (function () {
 self.onmessage = function (e) {
     switch(e.data.command){
         case 'encode':
-            encode(e.data.samples, e.data.sampleRate);
+            encode(e.data.samples, e.data.sampleRate, e.data.requestId);
             break;
         case 'decode':
-            decode(e.data.buffer, e.data.withHeader);
+            decode(e.data.buffer, e.data.withHeader, e.data.requestId);
             break;
     }
 };
 
-function encode(samples, sampleRate) {
+function encode(samples, sampleRate, reqId) {
     sampleRate = sampleRate || 8000;
     self.postMessage({
         command: 'encode',
-        amr: AMR.encode(samples, sampleRate, 7)
+        amr: AMR.encode(samples, sampleRate, 7),
+        requestId: reqId,
     });
 }
 
-function decode(u8Array, withHeader = true) {
+function decode(u8Array, withHeader = true, reqId = 0) {
     self.postMessage({
         command: 'decode',
-        amr: AMR.decode(u8Array, withHeader)
+        amr: AMR.decode(u8Array, withHeader),
+        requestId: reqId,
     });
 }
 };

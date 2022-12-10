@@ -42,6 +42,13 @@ export default class BenzAMRRecorder {
      */
     _samples = new Float32Array(0);
 
+    _pendingSamples = [];
+
+    // 为了对解码之后的数据，按请求解码的顺序进行排序
+    _amrWorkerRequestId = 0;
+
+    _amrWorker = null;
+
     /**
      * @type {Uint8Array | null}
      * @private
@@ -113,6 +120,8 @@ export default class BenzAMRRecorder {
      * @private
      */
     _isPlaying = false;
+
+    _isContinuous = false;
 
     /**
      * @type {boolean}
@@ -405,8 +414,9 @@ export default class BenzAMRRecorder {
     /**
      * 播放（重新开始，无视暂停状态）
      * @param {number|string?} startTime 可指定开始位置
+     * @param {boolean} continuous 持续播放，将不会调用{@link onEnded}回调
      */
-    play(startTime) {
+    play(startTime, continuous = false) {
         const _startTime = (startTime && startTime < this.getDuration()) ? parseFloat(startTime) : 0;
         if (!this._isInit) {
             throw new Error('Please init AMR first.');
@@ -414,15 +424,72 @@ export default class BenzAMRRecorder {
         if (this._onPlay) {
             this._onPlay();
         }
+        this._isContinuous = continuous;
+        this._startCtxTime = RecorderControl.getCtxTime() - _startTime;
+
+        this._play(_startTime);
+    }
+
+    _play(startTime = 0) {
         this._isPlaying = true;
         this._isPaused = false;
-        this._startCtxTime = RecorderControl.getCtxTime() - _startTime;
+        let onEndCB = () => {
+            if (!this._isContinuous) {
+                this._onEndCallback();
+            } else {
+                if (this._pendingSamples.length > 0) {
+                    let length = 0;
+                    this._pendingSamples.forEach(s => {
+                        length += s.length;
+                    })
+                    let arr = new Float32Array(length);
+                    length = 0;
+                    this._pendingSamples.forEach(s => {
+                        arr.set(s, length);
+                        length += s.length;
+                    })
+
+                    this._pendingSamples = [];
+                    this._recorderControl.playPcm(
+                        arr,
+                        this._isInitRecorder ? RecorderControl.getCtxSampleRate() : 8000,
+                        onEndCB,
+                        0
+                        // RecorderControl.getCtxTime()
+                    );
+                } else {
+                    this._isPlaying = false;
+                }
+            }
+        };
         this._recorderControl.playPcm(
             this._samples,
             this._isInitRecorder ? RecorderControl.getCtxSampleRate() : 8000,
-            this._onEndCallback.bind(this),
-            _startTime
+            onEndCB,
+            startTime
         );
+    }
+
+    /**
+     * @param {Float32Array} array
+     * @param {boolean} withHeader 数据是否包含AMR文件格式头
+     */
+    append(array, withHeader = true) {
+        if (!this._isInit) {
+            throw new Error('Please init AMR first.');
+        }
+        if (!this._isContinuous) {
+            throw new Error('Not in continuous play mode');
+        }
+        let u8Array = new Uint8Array(array);
+        this.decodeAMRAsync(u8Array, withHeader).then((samples) => {
+            if (this._isPlaying) {
+                this._pendingSamples.push(samples);
+            } else {
+                this._samples = samples;
+                this._play(0);
+            }
+        });
     }
 
     /**
@@ -432,6 +499,8 @@ export default class BenzAMRRecorder {
         this._recorderControl.stopPcm();
         this._isPlaying = false;
         this._isPaused = false;
+        this._isContinuous = false;
+        this._pendingSamples = [];
         if (this._onStop) {
             this._onStop();
         }
@@ -643,6 +712,8 @@ export default class BenzAMRRecorder {
         this._samples = null;
         this._rawData = null;
         this._blob = null;
+        this._pendingSamples = null;
+        this._amrWorker.terminate();
     }
 
     /*
@@ -653,12 +724,21 @@ export default class BenzAMRRecorder {
     */
 
     _runAMRWorker = (msg, resolve) => {
-        const amrWorker = new Worker(amrWorkerURLObj);
-        amrWorker.postMessage(msg);
-        amrWorker.onmessage = (e) => {
-            resolve(e.data.amr);
-            amrWorker.terminate();
-        };
+        let requestId = ++this._amrWorkerRequestId;
+        if (!this._amrWorker) {
+            this._amrWorker = new Worker(amrWorkerURLObj);
+            this._amrWorker._requestMap = new Map();
+            this._amrWorker.onmessage = (e) => {
+                let map = this._amrWorker._requestMap;
+                let fn = map.get(e.data.requestId);
+                fn(e.data.amr);
+                map.delete(e.data.requestId);
+                //amrWorker.terminate();
+            };
+        }
+        this._amrWorker._requestMap.set(requestId, resolve);
+        msg.requestId = requestId;
+        this._amrWorker.postMessage(msg);
     };
 
     encodeAMRAsync(samples, sampleRate) {
