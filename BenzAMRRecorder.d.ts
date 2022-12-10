@@ -43,9 +43,10 @@ export default class BenzAMRRecorder {
 
     /**
      * 使用浮点数据初始化
+     * @param withHeader 是否包含 arm 格式头
      * @param array
      */
-    public initWithArrayBuffer(array: Float32Array): Promise<void>;
+    public initWithArrayBuffer(array: Float32Array, withHeader: boolean): Promise<void>;
 
     /**
      * 使用 Blob 对象初始化（ <input type="file">）

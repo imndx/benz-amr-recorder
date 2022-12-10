@@ -48,8 +48,8 @@ var AMR = (function () {
             out.set(raw, offset);
             return out
         }),
-        decode: (function (amr) {
-            var raw = this._decode(amr);
+        decode: (function (amr, withHeader = true) {
+            var raw = this._decode(amr, withHeader);
             if (!raw) {
                 return null
             }
@@ -59,8 +59,9 @@ var AMR = (function () {
             }
             return out
         }),
-        _decode: (function (amr) {
-            if (String.fromCharCode.apply(null, amr.subarray(0, this.AMR_HEADER.length)) !== this.AMR_HEADER) {
+        _decode: (function (amr, withHeader = true) {
+            if (withHeader && String.fromCharCode.apply(null, amr.subarray(0, this.AMR_HEADER.length)) !== this.AMR_HEADER) {
+                console.log('no header');
                 return null
             }
             var decoder = this.Decoder_Interface_init();
@@ -72,7 +73,7 @@ var AMR = (function () {
             var decodeInBuffer = new Uint8Array(Module.HEAPU8.buffer, buf, this.AMR_BUFFER_COUNT);
             buf = Module._malloc(this.PCM_BUFFER_COUNT * 2);
             var decodeOutBuffer = new Int16Array(Module.HEAPU8.buffer, buf, this.PCM_BUFFER_COUNT);
-            var inOffset = 6;
+            var inOffset = withHeader ? 6 : 0;
             var outOffset = 0;
             while (inOffset + 1 < amr.length && outOffset + 1 < out.length) {
                 var size = this.SIZES[amr[inOffset] >> 3 & 15];
@@ -2560,7 +2561,7 @@ var AMR = (function () {
             }))
         })
     };
-    
+
     var WORKERFS = {
         DIR_MODE: 16895, FILE_MODE: 33279, reader: null, mount: (function (mount) {
             assert(ENVIRONMENT_IS_WORKER);
@@ -24415,7 +24416,7 @@ self.onmessage = function (e) {
             encode(e.data.samples, e.data.sampleRate);
             break;
         case 'decode':
-            decode(e.data.buffer);
+            decode(e.data.buffer, e.data.withHeader);
             break;
     }
 };
@@ -24428,10 +24429,10 @@ function encode(samples, sampleRate) {
     });
 }
 
-function decode(u8Array) {
+function decode(u8Array, withHeader = true) {
     self.postMessage({
         command: 'decode',
-        amr: AMR.decode(u8Array)
+        amr: AMR.decode(u8Array, withHeader)
     });
 }
 };

@@ -14,7 +14,7 @@ import amrWorker from "./amrnb";
 const amrWorkerStr = amrWorker.toString()
     .replace(/^\s*function.*?\(\)\s*{/, '')
     .replace(/}\s*$/, '');
-const amrWorkerURLObj = (window.URL || window.webkitURL).createObjectURL(new Blob([amrWorkerStr], {type:"text/javascript"}));
+const amrWorkerURLObj = (window.URL || window.webkitURL).createObjectURL(new Blob([amrWorkerStr], {type: "text/javascript"}));
 
 export default class BenzAMRRecorder {
 
@@ -131,7 +131,7 @@ export default class BenzAMRRecorder {
      * @private
      */
     _pauseTime = 0.0;
-    
+
     constructor() {
     }
 
@@ -146,16 +146,17 @@ export default class BenzAMRRecorder {
     /**
      * 使用浮点数据初始化
      * @param {Float32Array} array
+     * @param {boolean} withHeader 数据是否包含AMR文件格式头
      * @return {Promise}
      */
-    initWithArrayBuffer(array) {
+    initWithArrayBuffer(array, withHeader = true) {
         if (this._isInit || this._isInitRecorder) {
             BenzAMRRecorder.throwAlreadyInitialized();
         }
         this._playEmpty();
         return new Promise((resolve, reject) => {
             let u8Array = new Uint8Array(array);
-            this.decodeAMRAsync(u8Array).then((samples) => {
+            this.decodeAMRAsync(u8Array, withHeader).then((samples) => {
                 this._samples = samples;
                 this._isInit = true;
 
@@ -194,7 +195,7 @@ export default class BenzAMRRecorder {
         this._blob = blob;
         const p = new Promise((resolve) => {
             let reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 resolve(e.target.result);
             };
             reader.readAsArrayBuffer(blob);
@@ -218,10 +219,10 @@ export default class BenzAMRRecorder {
             let xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
             xhr.responseType = 'arraybuffer';
-            xhr.onload = function() {
+            xhr.onload = function () {
                 resolve(this.response);
             };
-            xhr.onerror = function() {
+            xhr.onerror = function () {
                 reject(new Error('Failed to fetch ' + url));
             };
             xhr.send();
@@ -669,12 +670,13 @@ export default class BenzAMRRecorder {
             }, resolve);
         });
     }
-    
-    decodeAMRAsync(u8Array) {
+
+    decodeAMRAsync(u8Array, withHeader = true) {
         return new Promise(resolve => {
             this._runAMRWorker({
                 command: 'decode',
-                buffer: u8Array
+                buffer: u8Array,
+                withHeader: withHeader
             }, resolve);
         })
     }
