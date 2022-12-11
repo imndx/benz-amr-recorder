@@ -641,12 +641,24 @@ export default class BenzAMRRecorder {
         }
     }
 
-    getRecordAMRBuffer(mode = 5, clear = true){
+    /**
+     * 获取录音生成的临时数据
+     * @param {number} mode amr 编码模式
+     * @param {boolean} withHeader 是否包含 arm header
+     * @param {boolean} clear 获取之后，是否清除已录制的数据
+     * @return {Promise<Uint8Array>}
+     */
+    getRecordAMRBuffer(mode = 5, withHeader = true, clear = true){
         return new Promise((resolve) => {
             this._recorderControl.generateRecordSamples(clear).then((samples) => {
                 return this.encodeAMRAsync(samples, RecorderControl.getCtxSampleRate(), mode);
             }).then((rawData) => {
-                resolve(rawData);
+                // Uint8Array
+                if (withHeader){
+                    resolve(rawData);
+                } else {
+                    resolve(rawData.slice(6));
+                }
             });
         });
     }
