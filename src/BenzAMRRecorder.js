@@ -641,6 +641,16 @@ export default class BenzAMRRecorder {
         }
     }
 
+    getRecordAMRBuffer(mode = 5, clear = true){
+        return new Promise((resolve) => {
+            this._recorderControl.generateRecordSamples(clear).then((samples) => {
+                return this.encodeAMRAsync(samples, RecorderControl.getCtxSampleRate(), mode);
+            }).then((rawData) => {
+                resolve(rawData);
+            });
+        });
+    }
+
     /**
      * 结束录音，并把录制的音频转换成 AMR
      * @return {Promise}
@@ -741,12 +751,14 @@ export default class BenzAMRRecorder {
         this._amrWorker.postMessage(msg);
     };
 
-    encodeAMRAsync(samples, sampleRate) {
+    encodeAMRAsync(samples, sampleRate, mode = 7) {
+        console.log('encodeAMRAsync encodeAMRAsync', mode)
         return new Promise(resolve => {
             this._runAMRWorker({
                 command: 'encode',
                 samples: samples,
-                sampleRate: sampleRate
+                sampleRate: sampleRate,
+                mode: mode
             }, resolve);
         });
     }

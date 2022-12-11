@@ -24413,7 +24413,7 @@ var AMR = (function () {
 self.onmessage = function (e) {
     switch(e.data.command){
         case 'encode':
-            encode(e.data.samples, e.data.sampleRate, e.data.requestId);
+            encode(e.data.samples, e.data.sampleRate, e.data.mode, e.data.requestId);
             break;
         case 'decode':
             decode(e.data.buffer, e.data.withHeader, e.data.requestId);
@@ -24421,11 +24421,11 @@ self.onmessage = function (e) {
     }
 };
 
-function encode(samples, sampleRate, reqId) {
+function encode(samples, sampleRate, mode, reqId) {
     sampleRate = sampleRate || 8000;
     self.postMessage({
         command: 'encode',
-        amr: AMR.encode(samples, sampleRate, 7),
+        amr: AMR.encode(samples, sampleRate, mode),
         requestId: reqId,
     });
 }

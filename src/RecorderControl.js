@@ -134,12 +134,15 @@ export default class RecorderControl {
         }
     }
 
-    generateRecordSamples() {
+    generateRecordSamples(clear = false) {
         return new Promise((resolve) => {
             if (this._recorder) {
                 this._recorder.getBuffer((buffers) => {
                     resolve(buffers[0]);
                 });
+                if (clear){
+                    this._recorder.clear();
+                }
             }
         });
     }
