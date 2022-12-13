@@ -69,8 +69,9 @@ export default class BenzAMRRecorder {
     /**
      * 播放（重新开始，无视暂停状态）
      * @param startTime 可指定开始位置
+     * @param continuous 可指定开始位置
      */
-    public play(startTime?: number|string): void;
+    public play(startTime?: number|string, continuous?: boolean): void;
 
     /**
      * 停止
@@ -187,6 +188,14 @@ export default class BenzAMRRecorder {
      * @param fn
      */
     public onStartRecord(fn: AMREvent): void;
+
+    /**
+     *
+     * @param mode 编码模式，默认是 7
+     * @param withHeader 是否包含 amr header
+     * @param clear 是否清除已获取的数据
+     */
+    public getRecordAMRBuffer(mode, withHeader, clear): Promise<Uint8Array>;
 
     /**
      * 结束录音事件
