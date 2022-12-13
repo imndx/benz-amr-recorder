@@ -80,6 +80,13 @@ export default class BenzAMRRecorder {
     _onPlay = null;
 
     /**
+     * 音量回调
+     * @type {Function | null}
+     * @private
+     */
+    _onAmplitudeUpdate = null;
+
+    /**
      * @type {Function | null}
      * @private
      */
@@ -295,6 +302,9 @@ export default class BenzAMRRecorder {
                 case 'startRecord':
                     this._onStartRecord = fn;
                     break;
+                case 'amplitudeUpdate':
+                    this._onAmplitudeUpdate = fn;
+                    break;
                 case 'cancelRecord':
                     this._onCancelRecord = fn;
                     break;
@@ -312,6 +322,7 @@ export default class BenzAMRRecorder {
                     this._onStartRecord = fn;
                     this._onCancelRecord = fn;
                     this._onFinishRecord = fn;
+                    this._onAmplitudeUpdate = fn;
                     break;
                 default:
             }
@@ -376,6 +387,14 @@ export default class BenzAMRRecorder {
      */
     onStartRecord(fn) {
         this.on('startRecord', fn);
+    }
+
+    /**
+     * 音量更新时间
+     * @param {Function | null} fn
+     */
+    onAmplitudeUpdate(fn){
+        this.on('amplitudeUpdate', fn)
     }
 
     /**
@@ -454,8 +473,8 @@ export default class BenzAMRRecorder {
                         arr,
                         this._isInitRecorder ? RecorderControl.getCtxSampleRate() : 8000,
                         onEndCB,
-                        0
-                        // RecorderControl.getCtxTime()
+                        0,
+                        this._onAmplitudeUpdate
                     );
                 } else {
                     this._isPlaying = false;
@@ -466,7 +485,8 @@ export default class BenzAMRRecorder {
             this._samples,
             this._isInitRecorder ? RecorderControl.getCtxSampleRate() : 8000,
             onEndCB,
-            startTime
+            startTime,
+            this._onAmplitudeUpdate
         );
     }
 
@@ -753,7 +773,7 @@ export default class BenzAMRRecorder {
             this._amrWorker.onmessage = (e) => {
                 let map = this._amrWorker._requestMap;
                 let fn = map.get(e.data.requestId);
-                fn(e.data.amr);
+                fn && fn(e.data.amr);
                 map.delete(e.data.requestId);
                 //amrWorker.terminate();
             };

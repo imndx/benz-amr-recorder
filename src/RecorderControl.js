@@ -29,7 +29,7 @@ export default class RecorderControl {
 
     _curSourceNode = null;
 
-    playPcm (samples, sampleRate, onEnded, startPos) {
+    playPcm(samples, sampleRate, onEnded, startPos, onAmplitudeUpdate) {
         if (!ctx || ctx.state === 'closed') {
             ctx = new AudioContext();
         }
@@ -70,6 +70,17 @@ export default class RecorderControl {
             channelBuffer = buffer['getChannelData'](0);
             channelBuffer.set(_samples);
         }
+
+        if (onAmplitudeUpdate){
+            let tmp = 0;
+            for (let i = 0; i < _samples.length; i++) {
+                // 近似了一下
+                tmp += Math.abs(_samples[i] * 32767);
+            }
+            let amplitude = Math.ceil(tmp / _samples.length);
+            onAmplitudeUpdate(amplitude);
+        }
+
         this._curSourceNode['buffer'] = buffer;
         this._curSourceNode['loop'] = false;
         this._curSourceNode['connect'](ctx['destination']);
@@ -140,7 +151,7 @@ export default class RecorderControl {
                 this._recorder.getBuffer((buffers) => {
                     resolve(buffers[0]);
                 });
-                if (clear){
+                if (clear) {
                     this._recorder.clear();
                 }
             }
