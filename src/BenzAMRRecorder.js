@@ -446,10 +446,10 @@ export default class BenzAMRRecorder {
         this._isContinuous = continuous;
         this._startCtxTime = RecorderControl.getCtxTime() - _startTime;
 
-        this._play(_startTime);
+        this.__play(_startTime);
     }
 
-    _play(startTime = 0) {
+    __play(startTime = 0) {
         this._isPlaying = true;
         this._isPaused = false;
         let onEndCB = () => {
@@ -507,7 +507,7 @@ export default class BenzAMRRecorder {
                 this._pendingSamples.push(samples);
             } else {
                 this._samples = samples;
-                this._play(0);
+                this.__play(0);
             }
         });
     }
